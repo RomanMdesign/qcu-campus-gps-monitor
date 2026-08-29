@@ -1,17 +1,7 @@
-// src/firebase.js
-
 import { initializeApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
-import { getStorage } from "firebase/storage";
-import {
-  getAnalytics,
-  isSupported,
-} from "firebase/analytics";
-
-// --------------------------------------------------
-// Firebase configuration
-// Values come from Render Environment Variables.
-// --------------------------------------------------
+import { getAuth, signInAnonymously } from "firebase/auth";
+import { getAnalytics, isSupported } from "firebase/analytics";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -19,57 +9,52 @@ const firebaseConfig = {
   databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId:
-    import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId:
-    import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-// --------------------------------------------------
-// Initialize Firebase
-// --------------------------------------------------
+const required = [
+  "apiKey",
+  "authDomain",
+  "databaseURL",
+  "projectId",
+  "storageBucket",
+  "messagingSenderId",
+  "appId"
+];
 
-const app = initializeApp(firebaseConfig);
+for (const key of required) {
+  if (!firebaseConfig[key]) {
+    console.error(`Missing Firebase configuration: ${key}`);
+  }
+}
 
-// --------------------------------------------------
-// Firebase Realtime Database
-// --------------------------------------------------
+export const app = initializeApp(firebaseConfig);
 
-const database = getDatabase(app);
+export const database = getDatabase(app);
 
-// --------------------------------------------------
-// Firebase Storage
-// --------------------------------------------------
+export const auth = getAuth(app);
 
-const storage = getStorage(app);
+export async function signInGPSUser() {
+  if (!auth.currentUser) {
+    await signInAnonymously(auth);
+  }
 
-// --------------------------------------------------
-// Firebase Analytics
-// Optional.
-// Analytics must never prevent the GPS application
-// from loading.
-// --------------------------------------------------
+  return auth.currentUser;
+}
 
-let analytics = null;
+export let analytics = null;
 
-isSupported()
-  .then((supported) => {
-    if (supported) {
-      analytics = getAnalytics(app);
-    }
-  })
-  .catch(() => {
-    analytics = null;
-  });
-
-// --------------------------------------------------
-// Exports
-// --------------------------------------------------
-
-export {
-  app,
-  database,
-  storage,
-  analytics,
-};
+if (typeof window !== "undefined") {
+  isSupported()
+    .then((supported) => {
+      if (supported) {
+        analytics = getAnalytics(app);
+      }
+    })
+    .catch(() => {
+      // Analytics is optional.
+      // GPS should continue working even without Analytics.
+    });
+}
